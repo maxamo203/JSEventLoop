@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo · ¿el render ocurre entre microtasks?</title>
+  <style>
+    body { font-family: system-ui; background:#0d1117; color:#e6edf3; padding:30px; max-width:720px; margin:0 auto; }
+    h2 { color:#58a6ff; }
+    button { font-size:1rem; padding:14px 22px; margin:6px 8px 6px 0; border-radius:8px; cursor:pointer;
+             border:1px solid #444; background:#161b22; color:#e6edf3; font-weight:600; }
+    #contador { font-size:3rem; font-weight:800; text-align:center; padding:24px;
+                background:#1f6feb; border-radius:12px; margin:18px 0; transition:none; }
+    p { color:#8b949e; line-height:1.6; }
+    .grupo { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; margin-bottom:14px; }
+    .grupo h3 { font-size:0.9rem; color:#e3b341; margin:0 0 8px; }
+    code { background:#ffffff10; padding:2px 6px; border-radius:4px; color:#39c5cf; }
+    #log { font-family:Consolas,monospace; font-size:0.85rem; white-space:pre-wrap; max-height:240px;
+           overflow:auto; background:#0a0d12; border:1px solid #30363d; border-radius:8px; padding:12px; }
+    .render { color:#3fb950; }
+    .micro  { color:#bc8cff; }
+  </style>
+</head>
+<body>
+  <h2>¿El navegador repinta ENTRE microtasks?</h2>
+  <p>
+    El número de abajo lo vamos a actualizar muchas veces seguidas dentro de microtasks
+    (Promises ya resueltas). Si el render ocurriera entre cada microtask, verías el número
+    "contar" 1, 2, 3… animándose. Si el render espera a que se vacíe TODA la cola de
+    microtasks, vas a ver que salta directo al valor final.
+  </p>
+
+  <div id="contador">0</div>
+
+  <div class="grupo">
+    <h3>Experimento A — 50 microtasks que actualizan el DOM</h3>
+    <p>Encadena 50 <code>Promise.resolve().then()</code>. Cada una escribe el número en pantalla
+       y hace un poco de trabajo. Abrí la consola (<b>F12</b>) para ver el log con timestamps.</p>
+    <button id="btnMicro">Correr 50 microtasks</button>
+  </div>
+
+  <div class="grupo">
+    <h3>Experimento B — lo mismo pero con setTimeout (macrotasks)</h3>
+    <p>Acá cada actualización es un <code>setTimeout(…, 0)</code>. Como cada una es una macrotask
+       distinta, el navegador SÍ puede repintar entre ellas. Comparalo con el A.</p>
+    <button id="btnMacro">Correr 50 macrotasks</button>
+  </div>
+
+  <button id="btnReset">Reset</button>
+
+  <div class="grupo">
+    <h3>Log</h3>
+    <div id="log"></div>
+  </div>
+
+  <script>
+    const contador = document.getElementById('contador');
+    const logEl = document.getElementById('log');
+    const t0 = performance.now();
+    const t = () => (performance.now() - t0).toFixed(1).padStart(7,' ');
+
+    function log(msg, cls) {
+      const d = document.createElement('div');
+      if (cls) d.className = cls;
+      d.textContent = `[${t()} ms] ${msg}`;
+      logEl.appendChild(d);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Detecta cada repintado real con requestAnimationFrame.
+    // Si rAF se dispara, significa que el navegador está por pintar un frame.
+    let rafActivo = false;
+    function vigilarRender() {
+      rafActivo = true;
+      requestAnimationFrame(() => {
+        log('🎨 RENDER (frame pintado) · contador en pantalla = ' + contador.textContent, 'render');
+        rafActivo = false;
+      });
+    }
+
+    function trabajoPesado() {
+      // pequeño bloqueo para que cada paso tome tiempo medible
+      const fin = performance.now() + 5;
+      let x = 0;
+      while (performance.now() < fin) x += Math.sqrt(x + 1);
+      return x;
+    }
+
+    // ── Experimento A: 50 microtasks encadenadas ──────────────────────────
+    document.getElementById('btnMicro').addEventListener('click', () => {
+      log('▶ A: encolando 50 microtasks (Promise.then)…', 'micro');
+      let cadena = Promise.resolve();
+      for (let i = 1; i <= 50; i++) {
+        cadena = cadena.then(() => {
+          contador.textContent = i;          // actualiza el DOM
+          trabajoPesado();                    // ocupa el hilo un toque
+          if (i === 1 || i === 50) log(`   microtask #${i} · DOM = ${i}`, 'micro');
+          vigilarRender();                    // pide observar el próximo render
+        });
+      }
+      cadena.then(() => log('✅ A: las 50 microtasks terminaron', 'micro'));
+    });
+
+    // ── Experimento B: 50 macrotasks (setTimeout) ─────────────────────────
+    document.getElementById('btnMacro').addEventListener('click', () => {
+      log('▶ B: encolando 50 macrotasks (setTimeout 0)…');
+      for (let i = 1; i <= 50; i++) {
+        setTimeout(() => {
+          contador.textContent = i;
+          trabajoPesado();
+          if (i === 1 || i === 50) log(`   macrotask #${i} · DOM = ${i}`);
+          vigilarRender();
+        }, 0);
+      }
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      contador.textContent = '0';
+      logEl.innerHTML = '';
+    });
+  </script>
+</body>
+</html>

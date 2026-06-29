@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Event Loop de JavaScript</title>
+  <link rel="stylesheet" href="prism.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Navigation Bar ── -->
+  <nav id="nav">
+    <button class="nav-btn" id="btn-prev">←</button>
+    <span id="slide-counter">1 / 11</span>
+    <button class="nav-btn" id="btn-next">→</button>
+    <div id="slide-dots"></div>
+    <span id="slide-title-nav"></span>
+  </nav>
+
+  <!-- ── Slide Viewport ── -->
+  <div id="slides-viewport">
+    <div id="slides">
+
+      <!-- ── Slide 0: Title ── -->
+      <section class="slide slide-title" data-title="El Event Loop de JS">
+        <h1>El Event Loop de JavaScript</h1>
+        <p class="subtitle">Cómo un solo hilo ejecuta código "concurrente"</p>
+        <ul class="agenda">
+          <li><span class="badge">1</span> Código sincrónico</li>
+          <li><span class="badge">2</span> Trabajo pesado (bloqueo)</li>
+          <li><span class="badge">3</span> Prioridad: micro vs task</li>
+          <li><span class="badge">4</span> UI Events + Todo junto</li>
+          <li><span class="badge">5</span> Microtareas no repintan entre sí</li>
+          <li><span class="badge">6</span> fetch + I/O de red</li>
+          <li><span class="badge">7</span> fetch concurrente + epoll</li>
+          <li><span class="badge">8</span> async / await (caso real)</li>
+          <li><span class="badge">9</span> Polling de servidor (setInterval + fetch)</li>
+        </ul>
+        <p style="margin-top:28px;font-size:12px;color:var(--text-muted)">
+          Usa ← → para navegar · Espacio = siguiente paso · R = reiniciar
+        </p>
+      </section>
+
+      <!-- ── Example slides injected here by engine.js (before summary) ── -->
+
+      <!-- ── Slide 11: Summary ── -->
+      <section class="slide slide-summary" data-title="Conclusiones">
+        <h2>Conclusiones Clave</h2>
+        <ul class="takeaways">
+          <li>
+            <strong>Call Stack</strong> — JS es single-threaded. Solo hay un Call Stack. Una función a la vez.
+          </li>
+          <li>
+            <strong>Web APIs</strong> — <code>setTimeout</code>, <code>fetch</code>, <code>requestAnimationFrame</code> y los listeners NO los maneja el motor JS: viven en las Web APIs del navegador (C++/OS). Trabajan en paralelo y, al terminar, depositan su callback en la cola correspondiente.
+          </li>
+          <li>
+            <strong>El ciclo del Event Loop (orden real, según la spec de WHATWG)</strong>:
+            <br>① ejecutar <em>UNA</em> macrotask (un click de la UI Event Queue, o un timer de la Task Queue)
+            <br>② drenar <em>TODAS</em> las microtareas (Promise, queueMicrotask…)
+            <br>③ render: estilo/layout/paint + <code>requestAnimationFrame</code> (puede saltearse, ~60fps)
+            <br>→ repetir. <em>Por eso el handler de un click se ejecuta ANTES del repintado: el render va al final de la vuelta.</em>
+          </li>
+          <li>
+            <strong>UI Event Queue y Task Queue (macrotasks)</strong> — los eventos de UI (<code>click</code>, <code>input</code>…) y los timers (<code>setTimeout</code>, <code>setInterval</code>) son ambos <em>macrotasks</em>; el navegador los maneja como <em>task sources</em> distintas. Se consume <em>una</em> por vuelta.
+          </li>
+          <li>
+            <strong>Microtask Queue</strong> — <code>Promise.then</code>, <code>queueMicrotask</code>, <code>MutationObserver</code>. Se drena <em>completa</em> después de CADA macrotask, antes del render.
+          </li>
+          <li>
+            <strong>Render / rAF</strong> — corre al final de la vuelta, después de las microtareas. Como las microtasks van antes del paint, son ideales para preparar lo que se va a pintar; un <code>setTimeout</code> en cambio se difiere a una vuelta posterior.
+          </li>
+          <li>
+            <strong>async / await = promesas</strong> — cada <code>await</code> pausa la función y libera el hilo; lo que sigue se reanuda como una <em>microtarea</em> cuando la promesa resuelve. No bloquea: por eso el spinner se puede pintar mientras se espera la red.
+          </li>
+          <li>
+            <strong>Escribir el DOM es síncrono</strong> — <code>innerHTML</code>, <code>appendChild</code> modifican el DOM al instante en el Call Stack. Lo que se difiere al render es el recálculo de estilo/layout y el repintado.
+          </li>
+          <li>
+            <strong>Código sincrónico bloqueante</strong> — un loop largo congela el render y los eventos de UI (el click queda esperando en su cola). Usa Web Workers para trabajo pesado.
+          </li>
+          <li>
+            <strong>fetch + epoll</strong> — el hilo de JS <em>nunca</em> espera la red. Delega al OS. El OS usa epoll/kqueue/IOCP para monitorear N sockets con un solo thread. Cuando llega la respuesta → microtarea.
+          </li>
+          <li>
+            <strong>setInterval = tarea repetida</strong> — el polling (p.ej. consultar <code>/health</code> cada 10s) encola su callback en la Task Queue cada intervalo. Entre chequeos el hilo queda libre; el timer y la red trabajan en las Web APIs sin bloquear.
+          </li>
+        </ul>
+
+        <div style="margin-top:24px;font-size:0.8rem;color:var(--text-muted);line-height:1.7;border-top:1px solid var(--border);padding-top:14px;max-width:760px;width:100%">
+          <strong style="color:var(--accent)">Fuentes</strong><br>
+          · <em>HTML Standard — Event loop processing model</em> (WHATWG): el orden tarea → microtasks → "update the rendering"<br>
+          · Jake Archibald — <em>Tasks, microtasks, queues and schedules</em> (jakearchibald.com): el render ocurre entre tareas, las microtasks antes del paint<br>
+          · MDN — <em>Microtask guide / In depth</em>: las microtasks se drenan completas tras cada tarea
+        </div>
+      </section>
+
+    </div><!-- #slides -->
+  </div><!-- #slides-viewport -->
+
+  <script src="prism.min.js"></script>
+  <script src="examples.js"></script>
+  <script src="engine.js"></script>
+</body>
+</html>

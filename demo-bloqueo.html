@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Demo · ¿click o render primero?</title>
+    <style>
+      body {
+        font-family: system-ui;
+        background: #0d1117;
+        color: #e6edf3;
+        padding: 30px;
+        max-width: 680px;
+        margin: 0 auto;
+      }
+      button {
+        font-size: 1rem;
+        padding: 14px 22px;
+        margin: 6px 6px 6px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 1px solid #444;
+      }
+      #bloquear {
+        background: #e3b341;
+        color: #000;
+        font-weight: 700;
+      }
+      #clickme {
+        background: #39c5cf;
+        color: #000;
+        font-weight: 700;
+      }
+      #caja {
+        margin-top: 20px;
+        padding: 30px;
+        text-align: center;
+        font-size: 1.3rem;
+        font-weight: 700;
+        background: #1f6feb;
+        border-radius: 10px;
+      }
+      p {
+        color: #8b949e;
+        line-height: 1.6;
+      }
+      kbd {
+        background: #222;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 2px 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>¿Se ejecuta primero el click o el render?</h2>
+    <p>
+      1. Abrí la consola del navegador con <kbd>F12</kbd> (pestaña Console).<br />
+      2. Tocá <b>Bloquear</b> y, mientras está bloqueado, tocá
+      <b>Hacé click</b> varias veces.<br />
+      3. Mirá el orden de los logs y si la caja cambia de color durante el
+      bloqueo.
+    </p>
+
+    <button id="bloquear">Bloquear 3 segundos</button>
+    <button id="clickme">Hacé click acá</button>
+
+    <div id="caja">CAJA AZUL</div>
+
+    <script>
+      // ── El handler del click solo loguea ────────────────────────────────
+      document.getElementById("clickme").addEventListener("click", () => {
+        console.log(
+          "%c🖱️ CLICK ejecutado",
+          "color:#39c5cf",
+          performance.now().toFixed(0),
+          "ms",
+        );
+        const caja = document.getElementById("caja");
+        // Pido pintar la caja de ROJO ANTES del bucle
+        caja.style.background = "#33CC22";
+        caja.textContent = "CAJA VERDE (¿se ve ya?)";
+      });
+
+      // ── Bloqueo síncrono ────────────────────────────────────────────────
+      document.getElementById("bloquear").addEventListener("click", () => {
+        const caja = document.getElementById("caja");
+
+        // Pido pintar la caja de ROJO ANTES del bucle
+        caja.style.background = "#f85149";
+        caja.textContent = "CAJA ROJA (¿se ve ya?)";
+        console.log(
+          "%c🎨 Pedí pintar la caja de ROJO",
+          "color:#3fb950",
+          performance.now().toFixed(0),
+          "ms",
+        );
+
+        // Bucle síncrono que bloquea el hilo 3 segundos
+        console.log(
+          "%c⏳ Empieza bucle bloqueante...",
+          "color:#e3b341",
+          performance.now().toFixed(0),
+          "ms",
+        );
+        const fin = performance.now() + 3000;
+        while (performance.now() < fin) {
+          /* hilo ocupado */
+        }
+        console.log(
+          "%c✅ Bucle terminado (hilo libre)",
+          "color:#e3b341",
+          performance.now().toFixed(0),
+          "ms",
+        );
+
+        // Vuelvo la caja a azul
+        caja.style.background = "#1f6feb";
+        caja.textContent = "CAJA AZUL";
+      });
+    </script>
+  </body>
+</html>
