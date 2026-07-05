@@ -693,34 +693,37 @@ pre[class*="language-"] {
 
 /* ── Responsive: mobile ── */
 @media (max-width: 640px) {
+  /* Page can scroll so the nav bar isn't permanently pinned */
   html, body {
-    overflow: hidden;
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
   }
 
-  #slides-viewport {
-    top: 44px;
-  }
-
+  /* Nav scrolls away with the page instead of staying fixed on screen */
   #nav {
+    position: static;
     height: 44px;
     padding: 0 8px;
     gap: 8px;
   }
 
-  #slide-title-nav { display: none; }
-
-  /* Slides become scrollable instead of clipped */
-  .slide {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    display: block;
-    padding-bottom: 12px;
+  #slides-viewport {
+    position: static;
+    height: calc(100vh - 44px);
   }
 
+  #slide-title-nav { display: none; }
+
+  /* Text-only slides (no fixed controls bar) scroll as a whole, top-aligned
+     so centering can't push content upward under the fixed navbar. */
   .slide-title,
   .slide-summary,
   .slide-basics {
-    padding: 24px 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding: 24px 16px 32px;
   }
 
   .agenda {
@@ -732,32 +735,40 @@ pre[class*="language-"] {
     grid-template-columns: 1fr;
   }
 
-  /* Example slides: stack code above the diagram, let the whole slide scroll */
+  /* Example slides: header + code + diagram all scroll together so the code
+     and queues get more room; only the controls bar stays pinned at the
+     bottom via position: sticky. */
   .slide-example {
-    height: auto;
-    min-height: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .slide-header {
+    position: static;
   }
 
   .slide-body {
-    display: flex;
-    flex-direction: column;
+    display: block;
     flex: none;
+    min-height: 0;
+    overflow: visible;
   }
 
   .code-panel {
-    flex: none;
-    max-height: 42vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
   }
 
   .code-panel pre {
-    overflow: auto;
+    overflow: visible;
   }
 
   .diagram-panel {
     display: flex;
     flex-direction: column;
     overflow: visible;
-    min-height: 0;
   }
 
   /* Call Stack / Web APIs: stack instead of squeezing into 2 columns */
@@ -777,7 +788,7 @@ pre[class*="language-"] {
   }
 
   .queue-items {
-    max-height: 160px;
+    max-height: none;
   }
 
   .output-panel {
@@ -785,6 +796,9 @@ pre[class*="language-"] {
   }
 
   .controls {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
     padding: 8px;
   }
 

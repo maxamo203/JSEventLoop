@@ -51,6 +51,9 @@
     const slideEl = document.querySelectorAll('.slide')[n];
     if (slideEl) {
       titleNav.textContent = slideEl.dataset.title || '';
+      slideEl.scrollTop = 0;
+      const bodyEl = slideEl.querySelector('.slide-body');
+      if (bodyEl) bodyEl.scrollTop = 0;
     }
   }
 
