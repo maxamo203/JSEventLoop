@@ -691,6 +691,114 @@ pre[class*="language-"] {
   .code-panel { border-right: none; border-bottom: 1px solid var(--border); }
 }
 
+/* ── Responsive: mobile ── */
+@media (max-width: 640px) {
+  html, body {
+    overflow: hidden;
+  }
+
+  #slides-viewport {
+    top: 44px;
+  }
+
+  #nav {
+    height: 44px;
+    padding: 0 8px;
+    gap: 8px;
+  }
+
+  #slide-title-nav { display: none; }
+
+  /* Slides become scrollable instead of clipped */
+  .slide {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+    padding-bottom: 12px;
+  }
+
+  .slide-title,
+  .slide-summary,
+  .slide-basics {
+    padding: 24px 16px;
+  }
+
+  .agenda {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-grid,
+  .concept-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Example slides: stack code above the diagram, let the whole slide scroll */
+  .slide-example {
+    height: auto;
+    min-height: 100%;
+  }
+
+  .slide-body {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+
+  .code-panel {
+    flex: none;
+    max-height: 42vh;
+  }
+
+  .code-panel pre {
+    overflow: auto;
+  }
+
+  .diagram-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    min-height: 0;
+  }
+
+  /* Call Stack / Web APIs: stack instead of squeezing into 2 columns */
+  .exec-row {
+    grid-template-columns: 1fr;
+  }
+  .exec-row .queue-col {
+    min-height: 90px;
+  }
+
+  /* Queues: 2 per row instead of 4 so labels stay readable */
+  .queues-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .queues-grid .queue-col {
+    min-height: 90px;
+  }
+
+  .queue-items {
+    max-height: 160px;
+  }
+
+  .output-panel {
+    min-height: 60px;
+  }
+
+  .controls {
+    padding: 8px;
+  }
+
+  .step-description {
+    flex-basis: 100%;
+    order: 10;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding-left: 0;
+    padding-top: 6px;
+    margin-top: 4px;
+  }
+}
+
 /* ── Whole-page paint flash (render phase made visible) ── */
 #paint-flash {
   position: fixed;
