@@ -964,15 +964,28 @@ function showResults(items) {
         renderQueue: [], output: ['🖥 pantalla: spinner girando']
       },
       {
-        activeLine: 5, description: 'analyze() se reanuda (vuelve al Call Stack) y ejecuta res.json() apilado encima. Devuelve una promesa; el await vuelve a pausar analyze() → encola la siguiente reanudación como microtarea.',
+        activeLine: 5, description: 'La microtarea reanuda analyze(): ejecuta res.json() apilado encima. OJO: res.json() TAMBIÉN es asíncrono — devuelve una promesa (el body puede llegar en chunks).',
         callStack: [{ label: 'res.json()', type: 'callstack', executing: true }, { label: 'analyze()', type: 'callstack' }],
+        webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
+        uiQueue: [], taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: ['🖥 pantalla: spinner girando']
+      },
+      {
+        activeLine: 5, description: 'El segundo await actúa sobre la promesa de res.json(): PAUSA analyze() otra vez y libera el Call Stack. La reanudación queda pendiente hasta que el body se parsee.',
+        callStack: [],
         webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
         uiQueue: [], taskQueue: [],
         microtaskQueue: [{ label: 'reanudar analyze (tras await json)', type: 'microtask' }],
         renderQueue: [], output: ['🖥 pantalla: spinner girando']
       },
       {
-        activeLine: 6, description: 'analyze() se reanuda y llama a showResults(data). Se apila showResults().',
+        activeLine: 5, description: 'El body ya está parseado: el Event Loop drena la microtarea y reanuda analyze() con los datos listos en "data".',
+        callStack: [{ label: 'analyze() ↩ (tras json)', type: 'callstack', executing: true }],
+        webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
+        uiQueue: [], taskQueue: [], microtaskQueue: [], renderQueue: [], output: ['🖥 pantalla: spinner girando']
+      },
+      {
+        activeLine: 6, description: 'analyze() continúa y llama a showResults(data). Se apila showResults().',
         callStack: [{ label: 'showResults(data)', type: 'callstack', executing: true }, { label: 'analyze()', type: 'callstack' }],
         webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
         uiQueue: [], taskQueue: [], microtaskQueue: [], renderQueue: [], output: ['🖥 pantalla: spinner girando']
@@ -1085,15 +1098,27 @@ setInterval(checkHealth, 10000);`,
         renderQueue: [], output: []
       },
       {
-        activeLine: 2, description: 'checkHealth() se reanuda (vuelve al Call Stack) y ejecuta res.json() encima. Devuelve una promesa → el await vuelve a pausar, encolando la siguiente reanudación como microtarea.',
+        activeLine: 2, description: 'La microtarea reanuda checkHealth(): ejecuta res.json() encima. OJO: res.json() TAMBIÉN es asíncrono — devuelve una promesa (parsear el body no es instantáneo).',
         callStack: [{ label: 'res.json()', type: 'callstack', executing: true }, { label: 'checkHealth()', type: 'callstack' }],
+        webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
+        taskQueue: [], microtaskQueue: [], renderQueue: [], output: []
+      },
+      {
+        activeLine: 2, description: 'El segundo await actúa sobre la promesa de res.json(): PAUSA checkHealth() otra vez y libera el Call Stack. La reanudación queda pendiente hasta que el body se parsee.',
+        callStack: [],
         webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
         taskQueue: [],
         microtaskQueue: [{ label: 'reanudar checkHealth (tras await json)', type: 'microtask' }],
         renderQueue: [], output: []
       },
       {
-        activeLine: 3, description: 'checkHealth() se reanuda y llama setAiStatus(data.status). Se apila setAiStatus() encima.',
+        activeLine: 2, description: 'El body ya está parseado: el Event Loop drena la microtarea y reanuda checkHealth() con los datos listos en "data".',
+        callStack: [{ label: 'checkHealth() ↩ (tras json)', type: 'callstack', executing: true }],
+        webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
+        taskQueue: [], microtaskQueue: [], renderQueue: [], output: []
+      },
+      {
+        activeLine: 3, description: 'checkHealth() continúa y llama setAiStatus(data.status). Se apila setAiStatus() encima.',
         callStack: [{ label: 'setAiStatus("ok")', type: 'callstack', executing: true }, { label: 'checkHealth()', type: 'callstack' }],
         webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
         taskQueue: [], microtaskQueue: [], renderQueue: [], output: []

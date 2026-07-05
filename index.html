@@ -112,42 +112,33 @@
       <section class="slide slide-summary" data-title="Conclusiones">
         <h2>Conclusiones Clave</h2>
         <ul class="takeaways">
-          <li>
-            <strong>Call Stack</strong> — JS es single-threaded. Solo hay un Call Stack. Una función a la vez.
+          <li class="takeaway-wide">
+            <strong>El ciclo del Event Loop (orden real, spec WHATWG)</strong>:
+            ① ejecutar <em>UNA</em> macrotask (un click de la UI Event Queue, o un timer de la Task Queue)
+            · ② drenar <em>TODAS</em> las microtareas (Promise, queueMicrotask…)
+            · ③ render: estilo/layout/paint + <code>requestAnimationFrame</code> (~60fps, puede saltearse) → repetir.
+            <em>Por eso el handler de un click corre ANTES del repintado: el render va al final de la vuelta.</em>
           </li>
           <li>
-            <strong>Web APIs</strong> — <code>setTimeout</code>, <code>fetch</code>, <code>requestAnimationFrame</code> y los listeners NO los maneja el motor JS: viven en las Web APIs del navegador (C++/OS). Trabajan en paralelo y, al terminar, depositan su callback en la cola correspondiente.
+            <strong>Call Stack</strong> — JS es single-threaded. Un solo Call Stack, una función a la vez.
           </li>
           <li>
-            <strong>El ciclo del Event Loop (orden real, según la spec de WHATWG)</strong>:
-            <br>① ejecutar <em>UNA</em> macrotask (un click de la UI Event Queue, o un timer de la Task Queue)
-            <br>② drenar <em>TODAS</em> las microtareas (Promise, queueMicrotask…)
-            <br>③ render: estilo/layout/paint + <code>requestAnimationFrame</code> (puede saltearse, ~60fps)
-            <br>→ repetir. <em>Por eso el handler de un click se ejecuta ANTES del repintado: el render va al final de la vuelta.</em>
+            <strong>Web APIs</strong> — <code>setTimeout</code>, <code>fetch</code>, <code>rAF</code> y los listeners NO los maneja el motor JS: viven en el navegador (C++/OS), trabajan en paralelo y depositan su callback en la cola correspondiente al terminar.
           </li>
           <li>
-            <strong>UI Event Queue y Task Queue (macrotasks)</strong> — los eventos de UI (<code>click</code>, <code>input</code>…) y los timers (<code>setTimeout</code>, <code>setInterval</code>) son ambos <em>macrotasks</em>; el navegador los maneja como <em>task sources</em> distintas. Se consume <em>una</em> por vuelta.
+            <strong>Macrotasks: UI Event Queue + Task Queue</strong> — eventos de UI (<code>click</code>, <code>input</code>) y timers (<code>setTimeout</code>, <code>setInterval</code>) son macrotasks de <em>task sources</em> distintas. Se consume <em>una</em> por vuelta.
           </li>
           <li>
-            <strong>Microtask Queue</strong> — <code>Promise.then</code>, <code>queueMicrotask</code>, <code>MutationObserver</code>. Se drena <em>completa</em> después de CADA macrotask, antes del render.
+            <strong>Microtask Queue</strong> — <code>Promise.then</code>, <code>queueMicrotask</code>, <code>await</code>. Se drena <em>completa</em> después de CADA macrotask, antes del render.
           </li>
           <li>
-            <strong>Render / rAF</strong> — corre al final de la vuelta, después de las microtareas. Como las microtasks van antes del paint, son ideales para preparar lo que se va a pintar; un <code>setTimeout</code> en cambio se difiere a una vuelta posterior.
+            <strong>async / await = promesas</strong> — cada <code>await</code> pausa la función y libera el hilo; lo que sigue se reanuda como <em>microtarea</em>. Incluso <code>res.json()</code> es async: encola otra microtarea.
           </li>
           <li>
-            <strong>async / await = promesas</strong> — cada <code>await</code> pausa la función y libera el hilo; lo que sigue se reanuda como una <em>microtarea</em> cuando la promesa resuelve. No bloquea: por eso el spinner se puede pintar mientras se espera la red.
+            <strong>Escribir el DOM es síncrono</strong> — <code>innerHTML</code>, <code>appendChild</code> cambian el DOM al instante; lo que se difiere al render es el recálculo de estilo/layout y el repintado.
           </li>
           <li>
-            <strong>Escribir el DOM es síncrono</strong> — <code>innerHTML</code>, <code>appendChild</code> modifican el DOM al instante en el Call Stack. Lo que se difiere al render es el recálculo de estilo/layout y el repintado.
-          </li>
-          <li>
-            <strong>Código sincrónico bloqueante</strong> — un loop largo congela el render y los eventos de UI (el click queda esperando en su cola). Usa Web Workers para trabajo pesado.
-          </li>
-          <li>
-            <strong>fetch + epoll</strong> — el hilo de JS <em>nunca</em> espera la red. Delega al OS. El OS usa epoll/kqueue/IOCP para monitorear N sockets con un solo thread. Cuando llega la respuesta → microtarea.
-          </li>
-          <li>
-            <strong>setInterval = tarea repetida</strong> — el polling (p.ej. consultar <code>/health</code> cada 10s) encola su callback en la Task Queue cada intervalo. Entre chequeos el hilo queda libre; el timer y la red trabajan en las Web APIs sin bloquear.
+            <strong>Bloqueo vs fetch + epoll</strong> — un loop largo congela render y UI (usa Web Workers). En cambio el hilo <em>nunca</em> espera la red: delega al OS (epoll/kqueue/IOCP) y la respuesta vuelve como microtarea.
           </li>
         </ul>
 
