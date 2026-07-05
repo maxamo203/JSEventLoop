@@ -27,19 +27,83 @@
         <h1>El Event Loop de JavaScript</h1>
         <p class="subtitle">Cómo un solo hilo ejecuta código "concurrente"</p>
         <ul class="agenda">
-          <li><span class="badge">1</span> Código sincrónico</li>
-          <li><span class="badge">2</span> Trabajo pesado (bloqueo)</li>
-          <li><span class="badge">3</span> Prioridad: micro vs task</li>
-          <li><span class="badge">4</span> UI Events + Todo junto</li>
-          <li><span class="badge">5</span> Microtareas no repintan entre sí</li>
-          <li><span class="badge">6</span> fetch + I/O de red</li>
-          <li><span class="badge">7</span> fetch concurrente + epoll</li>
-          <li><span class="badge">8</span> async / await (caso real)</li>
-          <li><span class="badge">9</span> Polling de servidor (setInterval + fetch)</li>
+          <li><span class="badge">1</span> Conceptos: motor de JS y runtime</li>
+          <li><span class="badge">2</span> Conceptos: sync/async y callbacks</li>
+          <li><span class="badge">3</span> Conceptos: promesas y Event Loop</li>
+          <li><span class="badge">4</span> Código sincrónico</li>
+          <li><span class="badge">5</span> Trabajo pesado (bloqueo)</li>
+          <li><span class="badge">6</span> Prioridad: micro vs task</li>
+          <li><span class="badge">7</span> UI Events + Todo junto</li>
+          <li><span class="badge">8</span> Microtareas no repintan entre sí</li>
+          <li><span class="badge">9</span> fetch + I/O de red</li>
+          <li><span class="badge">10</span> fetch concurrente + epoll</li>
+          <li><span class="badge">11</span> async / await (caso real)</li>
+          <li><span class="badge">12</span> Polling de servidor (setInterval + fetch)</li>
         </ul>
         <p style="margin-top:28px;font-size:12px;color:var(--text-muted)">
           Usa ← → para navegar · Espacio = siguiente paso · R = reiniciar
         </p>
+      </section>
+
+      <!-- ── Slide 1: Conceptos básicos — Motor y Runtime ── -->
+      <section class="slide slide-basics" data-title="Conceptos: Motor y Runtime">
+        <h2>El Motor de JS y el Runtime</h2>
+        <div class="concept-grid">
+          <div class="concept-card">
+            <h3>Motor de JS <span class="concept-tag">V8, SpiderMonkey…</span></h3>
+            <p>Es el programa que lee y ejecuta tu código. Solo sabe ejecutar JS: no sabe nada de <code>setTimeout</code>, el DOM o la red. Eso lo provee el entorno (navegador o Node).</p>
+          </div>
+          <div class="concept-card">
+            <h3>Single-threaded</h3>
+            <p>El motor tiene un único <em>Call Stack</em>: solo puede ejecutar una función a la vez, de forma sincrónica. No hay dos líneas de tu JS corriendo en paralelo.</p>
+          </div>
+          <div class="concept-card">
+            <h3>Call Stack <span class="concept-tag">pila de llamadas</span></h3>
+            <p>Cada vez que se llama a una función se apila un "frame"; cuando termina, se desapila. Si el stack nunca se vacía (loop infinito, recursión sin fin), el hilo se congela.</p>
+          </div>
+          <div class="concept-card">
+            <h3>Runtime</h3>
+            <p>Es el "todo": motor JS + Web APIs (o APIs de Node) + colas de callbacks + Event Loop. El navegador es un runtime; Node.js es otro runtime (con libuv en vez de las Web APIs del browser).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Slide 2: Conceptos básicos — Sync/Async y Callbacks ── -->
+      <section class="slide slide-basics" data-title="Conceptos: Sync/Async y Callbacks">
+        <h2>Sincronía, Asincronía y Callbacks</h2>
+        <div class="concept-grid concept-grid-3">
+          <div class="concept-card">
+            <h3>Síncrono vs asíncrono</h3>
+            <p>Síncrono: cada línea espera a que termine la anterior. Asíncrono: se dispara una operación (timer, red, archivo) y el resultado llega <em>después</em>, sin bloquear el hilo mientras se espera.</p>
+          </div>
+          <div class="concept-card">
+            <h3>Callback</h3>
+            <p>Una función que se pasa como argumento para ejecutarse más adelante, cuando algo termine (<code>setTimeout(fn, 1000)</code>, <code>btn.addEventListener('click', fn)</code>). La forma más primitiva de manejar asincronía en JS.</p>
+          </div>
+          <div class="concept-card">
+            <h3>Callback hell</h3>
+            <p>Anidar callbacks dentro de callbacks para encadenar pasos asíncronos vuelve el código difícil de leer y mantener. Las promesas nacieron para resolver este problema.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Slide 3: Conceptos básicos — Promesas y Event Loop ── -->
+      <section class="slide slide-basics" data-title="Conceptos: Promesas y Event Loop">
+        <h2>Promesas, async/await y Event Loop</h2>
+        <div class="concept-grid concept-grid-3">
+          <div class="concept-card">
+            <h3>Promesa <span class="concept-tag">Promise</span></h3>
+            <p>Un objeto que representa un valor que <em>todavía no existe</em> pero existirá (o fallará) en el futuro. 3 estados: <em>pending</em>, <em>fulfilled</em> y <em>rejected</em>. Se consume con <code>.then() / .catch()</code> o con <code>await</code>.</p>
+          </div>
+          <div class="concept-card">
+            <h3>async / await</h3>
+            <p>Azúcar sintáctica sobre promesas. Una función <code>async</code> siempre devuelve una promesa; <code>await</code> pausa esa función (sin bloquear el hilo) hasta que la promesa se resuelve, y el código se lee como si fuera sincrónico.</p>
+          </div>
+          <div class="concept-card">
+            <h3>Event Loop</h3>
+            <p>El mecanismo que coordina todo: mientras el Call Stack esté vacío, va tomando callbacks pendientes (timers, promesas, eventos de UI, I/O) y los ejecuta uno por uno. Permite que un lenguaje de un solo hilo maneje miles de operaciones "al mismo tiempo".</p>
+          </div>
+        </div>
       </section>
 
       <!-- ── Example slides injected here by engine.js (before summary) ── -->
