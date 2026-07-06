@@ -6,6 +6,15 @@
     <title>El Event Loop de JavaScript</title>
     <link rel="stylesheet" href="prism.min.css" />
     <link rel="stylesheet" href="style.css" />
+    <script>
+      // Apply saved theme before first paint to avoid a flash
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t) document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <!-- ── Navigation Bar ── -->
@@ -15,6 +24,7 @@
       <button class="nav-btn" id="btn-next">→</button>
       <div id="slide-dots"></div>
       <span id="slide-title-nav"></span>
+      <button class="nav-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>
     </nav>
 
     <!-- ── Slide Viewport ── -->
@@ -62,17 +72,7 @@
           data-title="Conceptos: Motor y Runtime"
         >
           <h2>El Motor de JS y el Runtime</h2>
-          <div class="concept-grid">
-            <div class="concept-card">
-              <h3>
-                Motor de JS <span class="concept-tag">V8, SpiderMonkey…</span>
-              </h3>
-              <p>
-                Es el programa que lee y ejecuta tu código. Solo sabe ejecutar
-                JS: no sabe nada de <code>setTimeout</code>, el DOM o la red.
-                Eso lo provee el entorno (navegador o Node).
-              </p>
-            </div>
+          <div class="concept-grid concept-grid-3">
             <div class="concept-card">
               <h3>Single-threaded</h3>
               <p>

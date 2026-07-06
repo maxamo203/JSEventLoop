@@ -528,6 +528,23 @@
     document.getElementById('btn-prev').addEventListener('click', prevSlide);
     document.getElementById('btn-next').addEventListener('click', nextSlide);
 
+    // Theme toggle (dark ⇄ light), persisted in localStorage
+    const themeBtn = document.getElementById('btn-theme');
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'light' ? '☀️' : '🌙';
+      try { localStorage.setItem('theme', theme); } catch (e) {}
+    }
+    // Sync button icon with whatever theme was applied pre-paint (default: dark)
+    applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+    themeBtn.addEventListener('click', () => {
+      const next =
+        document.documentElement.getAttribute('data-theme') === 'light'
+          ? 'dark'
+          : 'light';
+      applyTheme(next);
+    });
+
     // Keyboard
     document.addEventListener('keydown', e => {
       // don't steal keypresses from buttons when focused
