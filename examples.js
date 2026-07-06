@@ -661,7 +661,7 @@ botonB.addEventListener('click', () => {
   {
     id: 'fetch',
     title: 'Ejemplo 6 — fetch() + I/O de Red',
-    description: 'fetch() entrega la petición a la capa de red del navegador (Web API en C++, sobre el OS). El hilo JS queda libre de inmediato. OJO: res.json() TAMBIÉN devuelve una promesa, así que su .then encadena OTRA microtarea (no es síncrono).',
+    description: 'fetch() entrega la petición a la capa de red del navegador (Web API en C++, sobre el OS). El hilo JS queda libre de inmediato. CLAVE: cuando llega la respuesta NO salta directo a microtarea — el navegador encola primero una TAREA (macrotarea) de red que RESUELVE la promesa, y esa resolución es la que encola la microtarea del .then. Como headers y body llegan por separado, esto pasa DOS veces (fetch y res.json()).',
     showIO: true,
     code: `console.log('antes');
 
@@ -708,23 +708,47 @@ console.log('después');`,
         taskQueue: [], microtaskQueue: [], renderQueue: [], output: ['antes', 'después']
       },
       {
-        activeLine: 3, description: '✅ Llegaron las cabeceras de la respuesta (200 OK). Se encola la microtarea del primer .then (el que recibe res).',
+        activeLine: 3, description: '✅ Llegaron las cabeceras (200 OK). OJO: la respuesta NO va directo a microtarea. El navegador encola primero una TAREA (macrotarea) de red, que es la que resolverá la promesa del fetch.',
         callStack: [],
         webApis: [{ label: '🌐 GET /api/datos ✅ headers 200', type: 'webapis' }],
+        taskQueue: [{ label: '📥 tarea red: resolver promesa fetch', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: ['antes', 'después']
+      },
+      {
+        activeLine: 3, description: 'El Event Loop toma esa tarea de red y la ejecuta: resuelve la promesa del fetch. RECIÉN AHORA, como consecuencia, la continuación (.then) se encola como microtarea.',
+        callStack: [{ label: '📥 resolver promesa fetch', type: 'callstack', executing: true }],
+        webApis: [{ label: '🌐 GET /api/datos ✅ 200 OK', type: 'webapis' }],
         taskQueue: [],
         microtaskQueue: [{ label: 'cb: res => res.json()', type: 'microtask' }],
         renderQueue: [], output: ['antes', 'después']
       },
       {
-        activeLine: 3, description: 'La microtarea ejecuta res.json(): parsea el body ya recibido y devuelve OTRA promesa que resuelve de inmediato → encola la microtarea del segundo .then.',
+        activeLine: 3, description: 'La microtarea ejecuta res.json(): devuelve OTRA promesa, pendiente hasta que llegue el body. El body puede venir en chunks, así que su llegada es otro evento de red.',
         callStack: [{ label: 'cb: res => res.json()', type: 'callstack', executing: true }],
-        webApis: [{ label: '🌐 GET /api/datos ✅ 200 OK', type: 'webapis' }],
+        webApis: [{ label: '🌐 GET /api/datos … body en camino', type: 'webapis' }],
+        taskQueue: [],
+        microtaskQueue: [],
+        renderQueue: [], output: ['antes', 'después']
+      },
+      {
+        activeLine: 4, description: '✅ Llegó el body. De nuevo: el navegador encola una TAREA de red para resolver la promesa de res.json().',
+        callStack: [],
+        webApis: [{ label: '🌐 GET /api/datos ✅ body completo', type: 'webapis' }],
+        taskQueue: [{ label: '📥 tarea red: resolver promesa json()', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: ['antes', 'después']
+      },
+      {
+        activeLine: 4, description: 'Esa tarea de red resuelve la promesa de res.json() → se encola el segundo .then como microtarea.',
+        callStack: [{ label: '📥 resolver promesa json()', type: 'callstack', executing: true }],
+        webApis: [],
         taskQueue: [],
         microtaskQueue: [{ label: 'cb: data => console.log(...)', type: 'microtask' }],
         renderQueue: [], output: ['antes', 'después']
       },
       {
-        activeLine: 4, description: 'res.json() retornó. El Event Loop drena la siguiente microtarea: el callback final con los datos.',
+        activeLine: 4, description: 'El Event Loop drena la microtarea: el callback final con los datos.',
         callStack: [{ label: "cb: data => console.log('datos:', ...)", type: 'callstack', executing: true }],
         webApis: [], taskQueue: [], microtaskQueue: [], renderQueue: [], output: ['antes', 'después']
       },
@@ -807,32 +831,83 @@ console.log('en vuelo…');`,
         taskQueue: [], microtaskQueue: [], renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
       },
       {
-        activeLine: 4, description: '⚡ epoll avisa: /api/config respondió primero (fue la más rápida). p3 se resuelve → se encola la microtarea que avisa a Promise.all.',
+        activeLine: 4, description: '⚡ epoll avisa: /api/config respondió primero. Cada respuesta entra por SU PROPIA tarea de red. El navegador encola la tarea que resolverá p3.',
         callStack: [],
         webApis: [
           { label: '🌐 GET /api/usuario ⏳', type: 'webapis' },
           { label: '🌐 GET /api/posts ⏳', type: 'webapis' },
           { label: '🌐 GET /api/config ✅', type: 'webapis' }
         ],
+        taskQueue: [{ label: '📥 tarea red: resolver p3', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
+      },
+      {
+        activeLine: 6, description: 'El Event Loop toma la tarea de red y la apila en el Call Stack: se ejecuta y resuelve p3.',
+        callStack: [{ label: '📥 resolver p3', type: 'callstack', executing: true }],
+        webApis: [
+          { label: '🌐 GET /api/usuario ⏳', type: 'webapis' },
+          { label: '🌐 GET /api/posts ⏳', type: 'webapis' }
+        ],
+        taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
+      },
+      {
+        activeLine: 6, description: 'p3 resuelta → se encola una microtarea que avisa a Promise.all (1/3). El loop la drena de inmediato (aún faltan 2, no dispara el .then).',
+        callStack: [],
+        webApis: [
+          { label: '🌐 GET /api/usuario ⏳', type: 'webapis' },
+          { label: '🌐 GET /api/posts ⏳', type: 'webapis' }
+        ],
         taskQueue: [],
         microtaskQueue: [{ label: 'resolver p3 → Promise.all (1/3)', type: 'microtask' }],
         renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
       },
       {
-        activeLine: 2, description: '⚡ Llega /api/usuario. p1 se resuelve → otra microtarea avisa a Promise.all (la anterior ya bajó el contador a 2/3).',
+        activeLine: 2, description: '⚡ Llega /api/usuario: OTRA tarea de red distinta. Se encola para resolver p1.',
         callStack: [],
         webApis: [
           { label: '🌐 GET /api/usuario ✅', type: 'webapis' },
           { label: '🌐 GET /api/posts ⏳', type: 'webapis' }
         ],
+        taskQueue: [{ label: '📥 tarea red: resolver p1', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
+      },
+      {
+        activeLine: 6, description: 'El Event Loop apila esa tarea en el Call Stack: se ejecuta y resuelve p1.',
+        callStack: [{ label: '📥 resolver p1', type: 'callstack', executing: true }],
+        webApis: [{ label: '🌐 GET /api/posts ⏳', type: 'webapis' }],
+        taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
+      },
+      {
+        activeLine: 6, description: 'p1 resuelta → microtarea que avisa a Promise.all (2/3), drenada al instante.',
+        callStack: [],
+        webApis: [{ label: '🌐 GET /api/posts ⏳', type: 'webapis' }],
         taskQueue: [],
         microtaskQueue: [{ label: 'resolver p1 → Promise.all (2/3)', type: 'microtask' }],
         renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
       },
       {
-        activeLine: 3, description: '⚡ Llega /api/posts (la última). p2 se resuelve → la microtarea que completa el 3/3 de Promise.all.',
+        activeLine: 3, description: '⚡ Llega /api/posts (la última): su propia tarea de red, encolada para resolver p2.',
         callStack: [],
         webApis: [{ label: '🌐 GET /api/posts ✅', type: 'webapis' }],
+        taskQueue: [{ label: '📥 tarea red: resolver p2', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
+      },
+      {
+        activeLine: 3, description: 'El Event Loop apila esa tarea en el Call Stack: se ejecuta y resuelve p2.',
+        callStack: [{ label: '📥 resolver p2', type: 'callstack', executing: true }],
+        webApis: [],
+        taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
+      },
+      {
+        activeLine: 3, description: 'p2 resuelta → microtarea que completa el 3/3 de Promise.all.',
+        callStack: [],
+        webApis: [],
         taskQueue: [],
         microtaskQueue: [{ label: 'resolver p2 → Promise.all (3/3)', type: 'microtask' }],
         renderQueue: [], output: ['lanzando 3 requests', 'en vuelo…']
@@ -870,7 +945,7 @@ console.log('en vuelo…');`,
   {
     id: 'async-await',
     title: 'Ejemplo 8 — async / await disparado por un click (analyze)',
-    description: 'Caso real de IdentifAI. El usuario hace click en "Analizar" → UI event → corre analyze(). showLoading() y showResults() escriben el DOM (síncrono); cada await PAUSA la función y libera el hilo, reanudándose como microtarea cuando la promesa resuelve.',
+    description: 'Caso real de IdentifAI. El usuario hace click en "Analizar" → UI event → corre analyze(). showLoading() y showResults() escriben el DOM (síncrono); cada await PAUSA la función y libera el hilo. OJO: cada respuesta de red entra por una TAREA (macrotarea) que resuelve la promesa, y recién esa resolución encola la reanudación como microtarea.',
     showIO: true,
     code: `btnAnalizar.addEventListener('click', analyze);
 
@@ -953,12 +1028,28 @@ function showResults(items) {
         output: ['🖥 pantalla: spinner girando']
       },
       {
-        activeLine: 4, description: '✅ Llega la respuesta. La reanudación de analyze() (lo que sigue al await) se encola como microtarea.',
+        activeLine: 4, description: '✅ Llega la respuesta. NO va directo a microtarea: el navegador encola primero una TAREA de red, que resolverá la promesa del fetch.',
         callStack: [],
         webApis: [
           { label: '👂 click btnAnalizar → analyze', type: 'webapis' },
           { label: '🌐 POST /analyze ✅ 200', type: 'webapis' }
         ],
+        uiQueue: [],
+        taskQueue: [{ label: '📥 tarea red: resolver promesa fetch', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: ['🖥 pantalla: spinner girando']
+      },
+      {
+        activeLine: 4, description: 'El Event Loop apila la tarea de red en el Call Stack: se ejecuta y resuelve la promesa del fetch.',
+        callStack: [{ label: '📥 resolver promesa fetch', type: 'callstack', executing: true }],
+        webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
+        uiQueue: [], taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: ['🖥 pantalla: spinner girando']
+      },
+      {
+        activeLine: 4, description: 'Promesa resuelta → RECIÉN AHORA la reanudación de analyze() (lo que sigue al await) se encola como microtarea.',
+        callStack: [],
+        webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
         uiQueue: [], taskQueue: [],
         microtaskQueue: [{ label: 'reanudar analyze (tras await fetch)', type: 'microtask' }],
         renderQueue: [], output: ['🖥 pantalla: spinner girando']
@@ -971,7 +1062,33 @@ function showResults(items) {
         renderQueue: [], output: ['🖥 pantalla: spinner girando']
       },
       {
-        activeLine: 5, description: 'El segundo await actúa sobre la promesa de res.json(): PAUSA analyze() otra vez y libera el Call Stack. La reanudación queda pendiente hasta que el body se parsee.',
+        activeLine: 5, description: 'El segundo await actúa sobre la promesa de res.json(): PAUSA analyze() y libera el Call Stack. Queda pendiente hasta que llegue el body (otro evento de red).',
+        callStack: [],
+        webApis: [
+          { label: '👂 click btnAnalizar → analyze', type: 'webapis' },
+          { label: '🌐 POST /analyze … body en camino', type: 'webapis' }
+        ],
+        uiQueue: [], taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: ['🖥 pantalla: spinner girando']
+      },
+      {
+        activeLine: 5, description: '✅ Llegó el body. Igual que antes: una TAREA de red se encola para resolver la promesa de res.json().',
+        callStack: [],
+        webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
+        uiQueue: [],
+        taskQueue: [{ label: '📥 tarea red: resolver promesa json()', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: ['🖥 pantalla: spinner girando']
+      },
+      {
+        activeLine: 5, description: 'El Event Loop apila la tarea de red en el Call Stack: se ejecuta y resuelve la promesa de res.json().',
+        callStack: [{ label: '📥 resolver promesa json()', type: 'callstack', executing: true }],
+        webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
+        uiQueue: [], taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: ['🖥 pantalla: spinner girando']
+      },
+      {
+        activeLine: 5, description: 'Promesa resuelta → se encola la reanudación de analyze() como microtarea.',
         callStack: [],
         webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
         uiQueue: [], taskQueue: [],
@@ -979,7 +1096,7 @@ function showResults(items) {
         renderQueue: [], output: ['🖥 pantalla: spinner girando']
       },
       {
-        activeLine: 5, description: 'El body ya está parseado: el Event Loop drena la microtarea y reanuda analyze() con los datos listos en "data".',
+        activeLine: 5, description: 'El Event Loop drena la microtarea y reanuda analyze() con los datos listos en "data".',
         callStack: [{ label: 'analyze() ↩ (tras json)', type: 'callstack', executing: true }],
         webApis: [{ label: '👂 click btnAnalizar → analyze', type: 'webapis' }],
         uiQueue: [], taskQueue: [], microtaskQueue: [], renderQueue: [], output: ['🖥 pantalla: spinner girando']
@@ -1021,7 +1138,7 @@ function showResults(items) {
   {
     id: 'health-poll',
     title: 'Ejemplo 9 — Polling de estado del servidor (setInterval + fetch)',
-    description: 'Fragmento simplificado de IdentifAI. setInterval programa una tarea repetida en la Task Queue cada 10s; cada vez hace un fetch a /health. El hilo JS queda libre entre chequeos: el timer y la red trabajan en las Web APIs.',
+    description: 'Fragmento simplificado de IdentifAI. setInterval programa una tarea repetida en la Task Queue cada 10s; cada vez hace un fetch a /health. El hilo JS queda libre entre chequeos. OJO: acá conviven DOS tipos de tarea — la del timer (checkHealth) y las TAREAS de red que resuelven las promesas del fetch y res.json() antes de encolar sus microtareas.',
     showIO: true,
     code: `async function checkHealth() {
   const res = await fetch('/health');
@@ -1087,12 +1204,27 @@ setInterval(checkHealth, 10000);`,
         taskQueue: [], microtaskQueue: [], renderQueue: [], output: []
       },
       {
-        activeLine: 1, description: '✅ El servidor responde. La reanudación de checkHealth() (tras el await) se encola como microtarea.',
+        activeLine: 1, description: '✅ El servidor responde. NO va directo a microtarea: el navegador encola primero una TAREA de red, que resolverá la promesa del fetch.',
         callStack: [],
         webApis: [
           { label: '⏱ Interval 10s → checkHealth', type: 'webapis' },
           { label: '🌐 GET /health ✅ 200', type: 'webapis' }
         ],
+        taskQueue: [{ label: '📥 tarea red: resolver promesa fetch', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: []
+      },
+      {
+        activeLine: 1, description: 'El Event Loop apila la tarea de red en el Call Stack: se ejecuta y resuelve la promesa del fetch.',
+        callStack: [{ label: '📥 resolver promesa fetch', type: 'callstack', executing: true }],
+        webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
+        taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: []
+      },
+      {
+        activeLine: 1, description: 'Promesa resuelta → RECIÉN AHORA la reanudación de checkHealth() (tras el await) se encola como microtarea.',
+        callStack: [],
+        webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
         taskQueue: [],
         microtaskQueue: [{ label: 'reanudar checkHealth (tras await fetch)', type: 'microtask' }],
         renderQueue: [], output: []
@@ -1104,7 +1236,31 @@ setInterval(checkHealth, 10000);`,
         taskQueue: [], microtaskQueue: [], renderQueue: [], output: []
       },
       {
-        activeLine: 2, description: 'El segundo await actúa sobre la promesa de res.json(): PAUSA checkHealth() otra vez y libera el Call Stack. La reanudación queda pendiente hasta que el body se parsee.',
+        activeLine: 2, description: 'El segundo await actúa sobre la promesa de res.json(): PAUSA checkHealth() y libera el Call Stack. Queda pendiente hasta que llegue el body (otro evento de red).',
+        callStack: [],
+        webApis: [
+          { label: '⏱ Interval 10s → checkHealth', type: 'webapis' },
+          { label: '🌐 GET /health … body en camino', type: 'webapis' }
+        ],
+        taskQueue: [], microtaskQueue: [], renderQueue: [], output: []
+      },
+      {
+        activeLine: 2, description: '✅ Llegó el body. Igual que antes: una TAREA de red se encola para resolver la promesa de res.json().',
+        callStack: [],
+        webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
+        taskQueue: [{ label: '📥 tarea red: resolver promesa json()', type: 'task' }],
+        microtaskQueue: [],
+        renderQueue: [], output: []
+      },
+      {
+        activeLine: 2, description: 'El Event Loop apila la tarea de red en el Call Stack: se ejecuta y resuelve la promesa de res.json().',
+        callStack: [{ label: '📥 resolver promesa json()', type: 'callstack', executing: true }],
+        webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
+        taskQueue: [], microtaskQueue: [],
+        renderQueue: [], output: []
+      },
+      {
+        activeLine: 2, description: 'Promesa resuelta → se encola la reanudación de checkHealth() como microtarea.',
         callStack: [],
         webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
         taskQueue: [],
@@ -1112,7 +1268,7 @@ setInterval(checkHealth, 10000);`,
         renderQueue: [], output: []
       },
       {
-        activeLine: 2, description: 'El body ya está parseado: el Event Loop drena la microtarea y reanuda checkHealth() con los datos listos en "data".',
+        activeLine: 2, description: 'El Event Loop drena la microtarea y reanuda checkHealth() con los datos listos en "data".',
         callStack: [{ label: 'checkHealth() ↩ (tras json)', type: 'callstack', executing: true }],
         webApis: [{ label: '⏱ Interval 10s → checkHealth', type: 'webapis' }],
         taskQueue: [], microtaskQueue: [], renderQueue: [], output: []
