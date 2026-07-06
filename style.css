@@ -86,6 +86,13 @@ html, body {
 }
 #nav .nav-btn:hover { background: var(--border); }
 
+/* Theme toggle must never be squeezed out of the nav bar */
+#btn-theme {
+  flex-shrink: 0;
+  margin-left: auto;
+  line-height: 1;
+}
+
 #slide-counter {
   font-size: 13px;
   color: var(--text-muted);
@@ -766,8 +773,8 @@ pre[class*="language-"] {
   #nav {
     position: static;
     height: 44px;
-    padding: 0 8px;
-    gap: 8px;
+    padding: 0 6px;
+    gap: 4px;
   }
 
   #slides-viewport {
@@ -776,6 +783,35 @@ pre[class*="language-"] {
   }
 
   #slide-title-nav { display: none; }
+
+  /* Prev/next: tighter so they free up room for the dots + theme toggle */
+  #nav .nav-btn {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    font-size: 15px;
+  }
+
+  /* Counter: drop the wide fixed min-width */
+  #slide-counter {
+    min-width: 0;
+    font-size: 12px;
+  }
+
+  /* Dots don't fit on a phone (14 of them) and the counter already shows
+     position — hide them, but keep the flex spacer so the toggle stays right. */
+  #slide-dots {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .slide-dot { display: none; }
+
+  /* Keep the toggle pinned to the right edge and comfortably tappable */
+  #btn-theme {
+    margin-left: 4px;
+    padding: 4px 10px;
+    font-size: 18px;
+  }
 
   /* Text-only slides (no fixed controls bar) scroll as a whole, top-aligned
      so centering can't push content upward under the fixed navbar. */
